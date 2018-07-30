@@ -17,5 +17,5 @@ For wiring design, solder in exactly the same way as TeensyTap (see Github).
 ## TODO
 
 - [ ] Ensure that baudrate is high enough not to be disrupted by tap sending
-
+- [ ] Fix python2 compatibility (encoding ASCII)
 
