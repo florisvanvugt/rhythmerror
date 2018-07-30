@@ -275,20 +275,12 @@ void play_stimulus() {
   /* This plays the stimulus that we are supposed play at this point. */
   // Start playing the file.  This sketch continues to
   // run while the file plays.
-  char filename[] = "WM5.WAV";
-  //sprintf(filename,"%c.WAV",PLAY_FILENAME);
-  filename[0]=PLAY_FILENAME[0];
-  filename[1]=PLAY_FILENAME[1];
-  filename[2]=PLAY_FILENAME[2];
+  char filename[] = "XXX.WAV"; // = "WM5.WAV";
+  sprintf(filename,"%s.WAV",PLAY_FILENAME);
   
-  //char *filename = sprintf("%c.WAV",PLAY_FILENAME);
   Serial.print("PLAY ");
-  //Serial.print(PLAY_FILENAME);
-  //Serial.print(" ");
   Serial.println(filename);
-  //playWav1.play(filename);
-  //filename = "WM5.WAV";
-  playWav1.play(filename); //"WM5.WAV");
+  playWav1.play(filename);
   
   // A brief delay for the library read WAV info
   delay(5);
@@ -297,7 +289,7 @@ void play_stimulus() {
   while (playWav1.isPlaying()) {
   }
   
-  Serial.println("# Finished playing...");
+  Serial.println("DONE");
 }
 
 
@@ -418,7 +410,7 @@ void read_play_config_from_serial() {
     PLAY_FILENAME[i] = Serial.read();
   }
   PLAY_FILENAME[3] = '\0'; // end with a proper string ending -- otherwise can't ping this back.
-  Serial.println(PLAY_FILENAME);
+  //Serial.println(PLAY_FILENAME);
   Serial.print("# Config received...\n");
   send_config_to_serial();
   //send_header();
