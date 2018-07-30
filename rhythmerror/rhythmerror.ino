@@ -53,6 +53,7 @@ unsigned long current_t            = 0; // the current time (in ms)
 unsigned long prev_t               = 0; // the time stamp at the previous iteration (used to ensure correct loop time)
 unsigned long next_event_embargo_t = 0; // the time when the next event is allowed to happen
 unsigned long trial_end_t          = 0; // the time that this trial will end
+unsigned long record_duration_t    = 0; // how long to record for
 
 
 unsigned long tap_onset_t = 0;  // the onset time of the current tap
@@ -100,7 +101,7 @@ AudioControlSGTL5000     sgtl5000_1;
 
 int msg_number = 0; // keep track of how many messages we have sent over the serial interface (to be able to track down possible missing messages)
 
-long baudrate = 9600; // the serial communication baudrate; not sure whether this actually does anything because Teensy documentation suggests that USB communication is always the highest possible.
+long baudrate = 1000000; // the serial communication baudrate; not sure whether this actually does anything because Teensy documentation suggests that USB communication is always the highest possible.
 
 
 
@@ -112,7 +113,7 @@ const int MESSAGE_STOP                = 66;   // Signal to the Teensy to stop wh
 
 
 const int PLAY_INSTRUCTION_LENGTH        = 3; // Defines the length of the instruction packet to play
-const int RECORD_INSTRUCTION_LENGTH      = 2*4; // Defines the length of the instruction packet to record taps
+const int RECORD_INSTRUCTION_LENGTH      = 1*4; // Defines the length of the instruction packet to record taps
 
 
 char PLAY_FILENAME[PLAY_INSTRUCTION_LENGTH+1] = {'\0'}; // The filename that we should play
@@ -337,28 +338,24 @@ void loop(void) {
     if (inByte==MESSAGE_PLAY_STIMULUS) { // We are going to receive config information from the PC
       read_play_config_from_serial();
       play_stimulus();
-      //playFile("WM5.WAV");
     }
 
-    
-    if (0) { //(inByte==MESSAGE_START) {  // Switch to active mode
-      Serial.print("# Start signal received at t=");
-      Serial.print(current_t);
-      Serial.print("\n");
+    if (inByte==MESSAGE_RECORD_TAPS) { // We are going to receive config information from the PC
+      read_record_config_from_serial();
 
-      
       // Compute when this trial will end
-      trial_end_t = current_t + 6000 ; // TODO -- set duration
+      trial_end_t = current_t + ( record_duration_t*1000 ) ; // Determine until when we will be recording
       
       active        = true;
       running_trial = true;
       //ready_to_send = false;
       
       tap_phase        = 0;
-      
-      /* Okay, if we are playing a metronome then let's determine when to start. */
-      
+
+      /* And that's it, we're live! */
+
     }
+
     
     if (inByte==MESSAGE_STOP) {   // Switch to inactive mode
       Serial.print("# Stop signal received at t=");
@@ -397,7 +394,7 @@ void read_play_config_from_serial() {
      about a stimulus file we need to play.
   */
   active = false; // Ensure we are not active while receiving configuration (this can have unpredictable results)
-  Serial.print("# Receiving configuration...\n");
+  Serial.print("# Receiving play configuration...\n");
 
   while (!(Serial.available()>=PLAY_INSTRUCTION_LENGTH)) {
     // Wait until we have enough info
@@ -424,16 +421,48 @@ void read_play_config_from_serial() {
 
 
 
+
+
+void read_record_config_from_serial() {
+  /* 
+     This function runs when we are receiving instructions
+     about how long we should record taps for.
+  */
+  active = false; // Ensure we are not active while receiving configuration (this can have unpredictable results)
+  Serial.print("# Receiving record configuration...\n");
+
+  while (!(Serial.available()>=RECORD_INSTRUCTION_LENGTH)) {
+    // Wait until we have enough info
+  }
+  Serial.print("# ... starting to read...\n");
+  // Read the config
+  record_duration_t     = readint();
+  
+  //Serial.println(PLAY_FILENAME);
+  Serial.print("# Config received...\n");
+  Serial.print("# Recording for ");
+  Serial.print(record_duration_t);
+  Serial.println(" s");
+  send_config_to_serial();
+  send_header();
+
+  // Reset some of the other configuration parameters
+  missed_frames           = 0;
+  msg_number              = 0; // start messages from zero again
+  
+}
+
+
+
+
+
+
+
 void send_config_to_serial() {
   /* Sends a dump of the current config to the serial. */
 
-  //char msg[200];
-  //msg_number += 1; // This is the next message
   Serial.print  ("# Device installed ");
   Serial.println(DEVICE_ID);
-  //sprintf(msg, "# config AF=%i DELAY=%i METR=%i INTVL=%i NCLICK_PREDELAY=%i NCLICK=%i NCONT=%i\n",
-  ////ncontinuation_clicks);
-  //Serial.print("PLAY"msg);
 
 }
 

@@ -1,7 +1,8 @@
 
 
 
-baudrate = 9600 # for the discrete data transfer rate (has to match with the Teensy script)
+#baudrate = 9600 # for the discrete data transfer rate (has to match with the Teensy script)
+baudrate = 1000000
 
 serial_timeout = .01 # the timeout (in seconds) for port reading
 
@@ -167,6 +168,7 @@ def check_and_convert_int(key,datadict):
 def update_enabled():
     """ Update the state of buttons depending on our state."""
     config["play.button"]   .configure(state=NORMAL if config["capturing"] else DISABLED)
+    config["record.button"] .configure(state=NORMAL if config["capturing"] else DISABLED)
     config["abort.button"].configure(state=NORMAL if config["capturing"] and config["running"] else DISABLED)
 
 
@@ -203,7 +205,7 @@ def send_play_config():
 
 
 
-def tmp():
+def start_recording():
     # Create the output file
     subjectid = config["subj"].get().strip()
     outdir = os.path.join('data',subjectid)
@@ -221,13 +223,60 @@ def send_play():
     config["running"]=False
     update_enabled()
     if send_play_config(): # this sends the configuration for the current trial
-    
-        # Okay, when it has swallowed all this, now we can make it start!
-        #config["comm"].write(struct.pack('!B',MESSAGE_START))
         config["running"]=True
     update_enabled()
 
     
+
+
+
+
+def send_record_config():
+    """ 
+    Communicate to the Teensy that we want to record taps now
+    """
+
+    # First, let's collect and verify the data
+
+    trialinfo = {}
+    trialinfo["duration"]=config["duration"].get().strip()
+
+    if not trialinfo["duration"].isdigit():
+        error_message("Duration has to be an integer number.")
+        return False
+
+    trialinfo["duration"]=int(trialinfo["duration"])
+
+    print(trialinfo)
+    
+    # Okay, so now we need to talk to Teensy to tell him to start this trial
+
+    # First, tell Teensy to stop whatever it is it is doing at the moment (go to non-active mode)
+    config["comm"].write(struct.pack('!B',MESSAGE_STOP))
+
+    config["comm"].write(struct.pack('!B',MESSAGE_RECORD_TAPS))
+
+    # Now we tell Teensy that we are going to send some config information
+    config["comm"].write(struct.pack('i',trialinfo["duration"]))
+    
+    start_recording()
+
+    time.sleep(1) # Just wait a moment to allow Teensy to process (not sure if this is actually necessary)
+
+    return True
+    
+
+    
+def send_record():
+    config["running"]=False
+    update_enabled()
+    if send_record_config(): # this sends the configuration for the current trial
+        config["running"]=True
+    update_enabled()
+    
+
+
+
     
     
 def abort():
@@ -277,6 +326,9 @@ def build_gui():
 
 
     row += 1
+    Label(buttonframe, text="PLAY STIMULUS").grid(column=0,row=row,sticky=W)
+
+    row += 1
     config["stimulus"] = StringVar()
     Label(buttonframe, text="Stimulus file").grid(column=0,row=row,sticky=W)
     stimentry = Entry(buttonframe,textvariable=config["stimulus"]).grid(column=1,row=row,sticky=W)
@@ -290,8 +342,30 @@ def build_gui():
                                  command=send_play,
                                  background="green",
                                  activebackground="lightgreen")
-    
     config["play.button"].grid(column=3, row=row, sticky=W, padx=5,pady=20)
+
+
+
+    row += 1
+    Label(buttonframe, text="RECORD TAPS").grid(column=0,row=row,sticky=W)
+
+    row += 1
+    config["duration"] = StringVar()
+    Label(buttonframe, text="Duration (seconds)").grid(column=0,row=row,sticky=W)
+    durentry = Entry(buttonframe,textvariable=config["duration"]).grid(column=1,row=row,sticky=W)
+
+    row += 1
+    #Button(buttonframe,text="configure",     command=launch) .grid(column=2, row=row, sticky=W, padx=5,pady=20)
+    config["record.button"]=Button(buttonframe,
+                                   text="record",
+                                   command=send_record,
+                                   background="blue",
+                                   activebackground="lightblue")
+    config["record.button"].grid(column=3, row=row, sticky=W, padx=5,pady=20)
+
+    
+    row += 1
+    
     config["abort.button"]=Button(buttonframe,
                                   text="abort",
                                   command=abort,
