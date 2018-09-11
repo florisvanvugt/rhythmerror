@@ -14,6 +14,10 @@ For wiring design, solder in exactly the same way as TeensyTap (see Github).
 
 
 
+## Software
+* Install Arduino IDE (make sure you get version 1.8.6). Download [here](https://www.arduino.cc/en/Main/Software)
+* Install Teensyduino, which is an add-on for the Arduino software that allows you to use it with the Teensy. Download [here](https://www.pjrc.com/teensy/td_download.html)
+
 
 
 ## TODO
