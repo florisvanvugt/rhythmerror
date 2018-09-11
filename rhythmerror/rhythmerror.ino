@@ -192,7 +192,9 @@ void do_activity() {
     if (sound_playing && (start_play_t - current_t > 5)) { // we leave a little buffer
       if (!playWav1.isPlaying()) {
 	sound_playing = false;
-	Serial.println("SOUND END");
+	Serial.print("# t=");
+	Serial.print(current_t);
+	Serial.println(" SOUND END");
       }
       
     }
