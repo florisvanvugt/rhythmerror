@@ -168,7 +168,7 @@ def check_and_convert_int(key,datadict):
 def update_enabled():
     """ Update the state of buttons depending on our state."""
     config["play.button"]   .configure(state=NORMAL if config["capturing"] else DISABLED)
-    config["record.button"] .configure(state=NORMAL if config["capturing"] else DISABLED)
+    #config["record.button"] .configure(state=NORMAL if config["capturing"] else DISABLED)
     config["abort.button"].configure(state=NORMAL if config["capturing"] and config["running"] else DISABLED)
 
 
@@ -182,9 +182,20 @@ def send_play_config():
     trialinfo = {}
     trialinfo["stimulus"]=config["stimulus"].get().strip().upper()
 
+    if trialinfo["stimulus"]=="":
+        trialinfo["stimulus"]="---" # this indicates that we do not play anything
+        
     if len(trialinfo["stimulus"])!=3:
-        error_message("Your stimulus has to be 3 characters long.")
+        error_message("Your stimulus has to be empty or 3 characters long.")
         return False
+
+    trialinfo["duration"]=config["duration"].get().strip()
+
+    if not trialinfo["duration"].isdigit():
+        error_message("Duration has to be an integer number.")
+        return False
+
+    trialinfo["duration"]=int(trialinfo["duration"])
 
     print(trialinfo)
     
@@ -198,6 +209,11 @@ def send_play_config():
     # Now we tell Teensy that we are going to send some config information
     config["comm"].write(bytes(trialinfo["stimulus"],'ascii')) #struct.pack('s',trialinfo["stimulus"]));
 
+    # Now we tell Teensy that we are going to send some config information
+    config["comm"].write(struct.pack('i',trialinfo["duration"]))
+    
+    start_recording()
+    
     time.sleep(1) # Just wait a moment to allow Teensy to process (not sure if this is actually necessary)
 
     return True
@@ -219,7 +235,10 @@ def start_recording():
 
 
 
+
+    
 def send_play():
+    """ This is when people click the "Go" button """
     config["running"]=False
     update_enabled()
     if send_play_config(): # this sends the configuration for the current trial
@@ -229,55 +248,6 @@ def send_play():
     
 
 
-
-
-def send_record_config():
-    """ 
-    Communicate to the Teensy that we want to record taps now
-    """
-
-    # First, let's collect and verify the data
-
-    trialinfo = {}
-    trialinfo["duration"]=config["duration"].get().strip()
-
-    if not trialinfo["duration"].isdigit():
-        error_message("Duration has to be an integer number.")
-        return False
-
-    trialinfo["duration"]=int(trialinfo["duration"])
-
-    print(trialinfo)
-    
-    # Okay, so now we need to talk to Teensy to tell him to start this trial
-
-    # First, tell Teensy to stop whatever it is it is doing at the moment (go to non-active mode)
-    config["comm"].write(struct.pack('!B',MESSAGE_STOP))
-
-    config["comm"].write(struct.pack('!B',MESSAGE_RECORD_TAPS))
-
-    # Now we tell Teensy that we are going to send some config information
-    config["comm"].write(struct.pack('i',trialinfo["duration"]))
-    
-    start_recording()
-
-    time.sleep(1) # Just wait a moment to allow Teensy to process (not sure if this is actually necessary)
-
-    return True
-    
-
-    
-def send_record():
-    config["running"]=False
-    update_enabled()
-    if send_record_config(): # this sends the configuration for the current trial
-        config["running"]=True
-    update_enabled()
-    
-
-
-
-    
     
 def abort():
     config["comm"].write(struct.pack('!B',MESSAGE_STOP))
@@ -335,16 +305,6 @@ def build_gui():
     #config["stimentry"]=stimentry
     #config["stimentry"].grid(column=0,row=row,sticky=W,padx=5,pady=5)
 
-    row += 1
-    #Button(buttonframe,text="configure",     command=launch) .grid(column=2, row=row, sticky=W, padx=5,pady=20)
-    config["play.button"]=Button(buttonframe,
-                                 text="play",
-                                 command=send_play,
-                                 background="green",
-                                 activebackground="lightgreen")
-    config["play.button"].grid(column=3, row=row, sticky=W, padx=5,pady=20)
-
-
 
     row += 1
     Label(buttonframe, text="RECORD TAPS").grid(column=0,row=row,sticky=W)
@@ -353,15 +313,27 @@ def build_gui():
     config["duration"] = StringVar()
     Label(buttonframe, text="Duration (seconds)").grid(column=0,row=row,sticky=W)
     durentry = Entry(buttonframe,textvariable=config["duration"]).grid(column=1,row=row,sticky=W)
+    config["duration"].set("10")
 
+   
     row += 1
     #Button(buttonframe,text="configure",     command=launch) .grid(column=2, row=row, sticky=W, padx=5,pady=20)
-    config["record.button"]=Button(buttonframe,
-                                   text="record",
-                                   command=send_record,
-                                   background="blue",
-                                   activebackground="lightblue")
-    config["record.button"].grid(column=3, row=row, sticky=W, padx=5,pady=20)
+    config["play.button"]=Button(buttonframe,
+                                 text="go",
+                                 command=send_play,
+                                 background="green",
+                                 activebackground="lightgreen")
+    config["play.button"].grid(column=3, row=row, sticky=W, padx=5,pady=20)
+
+
+    #row += 1
+    #Button(buttonframe,text="configure",     command=launch) .grid(column=2, row=row, sticky=W, padx=5,pady=20)
+    #config["record.button"]=Button(buttonframe,
+    #                               text="record",
+    #                               command=send_record,
+    #                               background="blue",
+    #                               activebackground="lightblue")
+    #config["record.button"].grid(column=3, row=row, sticky=W, padx=5,pady=20)
 
     
     row += 1

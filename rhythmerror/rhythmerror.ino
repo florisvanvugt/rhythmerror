@@ -63,6 +63,12 @@ unsigned long tap_max_force_t = 0; // the time at which the maximum tap force wa
 
 
 
+boolean void_sound = false; // whether there is a sound to play
+unsigned long start_play_t = 0; // the time when we started playing the stimulus
+boolean sound_playing = false; // whether currently a sound is playing
+
+
+
 
 int missed_frames = 0; // ideally our script should read the FSR every millisecond. we use this variable to check whether it may have skipped a millisecond
 
@@ -108,12 +114,12 @@ long baudrate = 1000000; // the serial communication baudrate; not sure whether 
 
 
 const int MESSAGE_PLAY_STIMULUS       = 44; // Teensy should start playing a stimulus file
-const int MESSAGE_RECORD_TAPS         = 55; // Teensy should record the subject's taps
+//const int MESSAGE_RECORD_TAPS         = 55; // Teensy should record the subject's taps
 const int MESSAGE_STOP                = 66;   // Signal to the Teensy to stop whatever it is doing
 
 
-const int PLAY_INSTRUCTION_LENGTH        = 3; // Defines the length of the instruction packet to play
-const int RECORD_INSTRUCTION_LENGTH      = 1*4; // Defines the length of the instruction packet to record taps
+const int PLAY_INSTRUCTION_LENGTH        = 7; // Defines the length of the instruction packet to play
+//const int RECORD_INSTRUCTION_LENGTH      = 1*4; // Defines the length of the instruction packet to record taps
 
 
 char PLAY_FILENAME[PLAY_INSTRUCTION_LENGTH+1] = {'\0'}; // The filename that we should play
@@ -179,7 +185,17 @@ void do_activity() {
      */
     fsrReading = analogRead(fsrAnalogPin);
     
-    
+
+    /* 
+     * Check the status of the playing sound
+     */
+    if (sound_playing && (start_play_t - current_t > 5)) { // we leave a little buffer
+      if (!playWav1.isPlaying()) {
+	sound_playing = false;
+	Serial.println("SOUND END");
+      }
+      
+    }
     
 
     /*
@@ -251,21 +267,28 @@ void play_stimulus() {
   /* This plays the stimulus that we are supposed play at this point. */
   // Start playing the file.  This sketch continues to
   // run while the file plays.
-  char filename[] = "XXX.WAV"; // = "WM5.WAV";
-  sprintf(filename,"%s.WAV",PLAY_FILENAME);
-  
-  Serial.print("PLAY ");
-  Serial.println(filename);
-  playWav1.play(filename);
-  
-  // A brief delay for the library read WAV info
-  delay(5);
 
-  // Simply wait for the file to finish playing.
-  while (playWav1.isPlaying()) {
+  if (!void_sound) {
+  
+    char filename[] = "XXX.WAV"; // = "WM5.WAV";
+    sprintf(filename,"%s.WAV",PLAY_FILENAME);
+    
+    Serial.print("PLAY ");
+    Serial.println(filename);
+    playWav1.play(filename);
   }
   
-  Serial.println("DONE");
+  start_play_t = current_t; // This is when we started playing the sound
+  sound_playing = true;
+    
+  // A brief delay for the library read WAV info
+  //delay(5);
+
+  // Simply wait for the file to finish playing.
+  //while (playWav1.isPlaying()) {
+  //}
+  
+  //Serial.println("DONE");
 }
 
 
@@ -314,10 +337,6 @@ void loop(void) {
     if (inByte==MESSAGE_PLAY_STIMULUS) { // We are going to receive config information from the PC
       read_play_config_from_serial();
       play_stimulus();
-    }
-
-    if (inByte==MESSAGE_RECORD_TAPS) { // We are going to receive config information from the PC
-      read_record_config_from_serial();
 
       // Compute when this trial will end
       trial_end_t = current_t + ( record_duration_t*1000 ) ; // Determine until when we will be recording
@@ -325,10 +344,14 @@ void loop(void) {
       active        = true;
       running_trial = true;
       //ready_to_send = false;
-      
+    
       tap_phase        = 0;
-
+      
       /* And that's it, we're live! */
+
+    //if (inByte==MESSAGE_RECORD_TAPS) { // We are going to receive config information from the PC
+    //read_record_config_from_serial();
+
 
     }
 
@@ -379,46 +402,18 @@ void read_play_config_from_serial() {
   // Read the config
   //char PLAY_FILENAME[PLAY_INSTRUCTION_LENGTH+1] = {'\0'};
   //PLAY_FILENAME = {'\0'}; // initialise to zero
+  void_sound = true; // by default, let's assume there is no sound specified
   for (byte i=0; i<PLAY_INSTRUCTION_LENGTH; i++){
     PLAY_FILENAME[i] = Serial.read();
+    if (PLAY_FILENAME[i]!='-') void_sound = false;
   }
   PLAY_FILENAME[3] = '\0'; // end with a proper string ending -- otherwise can't ping this back.
   //Serial.println(PLAY_FILENAME);
-  Serial.print("# Config received...\n");
-  send_config_to_serial();
-  //send_header();
 
-  // Reset some of the other configuration parameters
-  missed_frames           = 0;
-  msg_number              = 0; // start messages from zero again
-  
-}
-
-
-
-
-
-
-void read_record_config_from_serial() {
-  /* 
-     This function runs when we are receiving instructions
-     about how long we should record taps for.
-  */
-  active = false; // Ensure we are not active while receiving configuration (this can have unpredictable results)
-  Serial.print("# Receiving record configuration...\n");
-
-  while (!(Serial.available()>=RECORD_INSTRUCTION_LENGTH)) {
-    // Wait until we have enough info
-  }
-  Serial.print("# ... starting to read...\n");
-  // Read the config
+  // Read the record duration (in sec)
   record_duration_t     = readint();
   
-  //Serial.println(PLAY_FILENAME);
   Serial.print("# Config received...\n");
-  Serial.print("# Recording for ");
-  Serial.print(record_duration_t);
-  Serial.println(" s");
   send_config_to_serial();
   send_header();
 
@@ -427,8 +422,6 @@ void read_record_config_from_serial() {
   msg_number              = 0; // start messages from zero again
   
 }
-
-
 
 
 
@@ -449,7 +442,7 @@ void send_config_to_serial() {
 
 void send_header() {
   /* Sends information about the current tap to the PC through the serial interface */
-  Serial.print("message_number type onset_t offset_t max_force_t max_force n_missed_frames\n");
+  Serial.print("message_number type play_start_t onset_t offset_t max_force_t max_force n_missed_frames\n");
 }  
 
 
@@ -457,8 +450,9 @@ void send_tap_to_serial() {
   /* Sends information about the current tap to the PC through the serial interface */
   char msg[100];
   msg_number += 1; // This is the next message
-  sprintf(msg, "%d tap %lu %lu %lu %d %d\n",
+  sprintf(msg, "%d tap %lu %lu %lu %lu %d %d\n",
 	  msg_number,
+	  start_play_t,
 	  tap_onset_t,
 	  tap_offset_t,
 	  tap_max_force_t,
