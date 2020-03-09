@@ -1,8 +1,8 @@
 
 
 
-#baudrate = 9600 # for the discrete data transfer rate (has to match with the Teensy script)
-baudrate = 1000000
+baudrate = 9600 # for the discrete data transfer rate (has to match with the Teensy script)
+#baudrate = 256000
 
 serial_timeout = .01 # the timeout (in seconds) for port reading
 

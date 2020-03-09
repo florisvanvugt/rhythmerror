@@ -10,7 +10,7 @@ Make sure you use a high quality SD card. We had some issues with cards and the 
 
 
 ## Wiring design
-For wiring design, solder in exactly the same way as TeensyTap (see Github).
+For wiring design, solder in exactly the same way as TeensyTap (see [https://github.com/florisvanvugt/teensytap](Github)).
 
 
 
@@ -18,6 +18,6 @@ For wiring design, solder in exactly the same way as TeensyTap (see Github).
 
 ## TODO
 
-- [ ] Ensure that baudrate is high enough not to be disrupted by tap sending
+- [x] Ensure that baudrate is high enough not to be disrupted by tap sending
 - [ ] Fix python2 compatibility (encoding ASCII)
 

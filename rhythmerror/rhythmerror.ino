@@ -101,7 +101,7 @@ AudioControlSGTL5000     sgtl5000_1;
 
 int msg_number = 0; // keep track of how many messages we have sent over the serial interface (to be able to track down possible missing messages)
 
-long baudrate = 1000000; // the serial communication baudrate; not sure whether this actually does anything because Teensy documentation suggests that USB communication is always the highest possible.
+long baudrate = 9600; // the serial communication baudrate; not sure whether this actually does anything because Teensy documentation suggests that USB communication is always the highest possible.
 
 
 
